@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CV Analyzer</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #8a8f9a;
+    --accent: #6366f1;
+    --accent-2: #818cf8;
+    --good: #22c55e;
+    --warn: #eab308;
+    --bad: #ef4444;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  header .tag { color: var(--muted); font-size: 13px; }
+  nav { display: flex; gap: 8px; }
+  nav button {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  nav button.active { color: var(--text); border-color: var(--accent); background: rgba(99,102,241,0.12); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  /* Upload */
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+  .dropzone .icon { font-size: 32px; margin-bottom: 8px; }
+  .dropzone .fname { margin-top: 10px; color: var(--accent-2); font-size: 13px; font-weight: 600; }
+  input[type=file] { display: none; }
+
+  textarea, input[type=text] {
+    width: 100%; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; font-family: inherit; resize: vertical;
+  }
+  label.field-label { font-size: 12px; color: var(--muted); display: block; margin: 16px 0 6px; }
+
+  .btn {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 11px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  .btn:hover { background: var(--accent-2); }
+  .btn:disabled { background: #3b3f4a; cursor: not-allowed; }
+  .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn.secondary:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+  .btn.small { padding: 6px 12px; font-size: 12px; }
+  .btn.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* Status */
+  #status { margin-top: 14px; font-size: 13px; color: var(--muted); min-height: 18px; }
+  #status.err { color: var(--bad); }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 6px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Dashboard */
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 6px; }
+  .score-card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; text-align: center;
+  }
+  .score-card .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .03em; }
+  .score-card .value { font-size: 30px; font-weight: 800; }
+  .bar-track { background: #2a2f3a; border-radius: 6px; height: 6px; margin-top: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width .6s ease; }
+
+  .section-title { font-size: 14px; font-weight: 700; margin: 0 0 12px; color: var(--text); }
+  .section-title .muted { color: var(--muted); font-weight: 400; font-size: 12px; }
+
+  .breakdown-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .breakdown-row:last-child { border-bottom: none; }
+  .breakdown-row .bname { width: 110px; font-size: 13px; flex-shrink: 0; }
+  .breakdown-row .bbar { flex: 1; }
+  .breakdown-row .bscore { width: 40px; text-align: right; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .breakdown-comment { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  ul.bullets { margin: 0; padding-left: 18px; }
+  ul.bullets li { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .cols .col h4 { font-size: 13px; margin: 0 0 10px; }
+  .col.strengths h4 { color: var(--good); }
+  .col.weaknesses h4 { color: var(--bad); }
+
+  details.expand {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 10px;
+  }
+  details.expand summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+  details.expand .body { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .issue-item { padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .issue-item:last-child { border-bottom: none; }
+
+  .rewrite-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 8px; }
+  .rewrite-box .tag { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .rewrite-box .text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+  .rewrite-box.original .text { color: var(--muted); }
+  .rewrite-box.new { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+
+  /* History */
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.hist th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 12px;}
+  table.hist td { padding: 10px; border-bottom: 1px solid var(--border); }
+  table.hist tr:hover { background: rgba(255,255,255,0.02); }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .empty-state { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13px; }
+
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📄 CV Analyzer</h1>
+      <div class="tag">AI-powered resume feedback, ATS scoring & rewrite suggestions</div>
+    </div>
+    <nav>
+      <button id="nav-upload" class="active">Analyze</button>
+      <button id="nav-history">History</button>
+    </nav>
+  </header>
+
+  <!-- ===================== UPLOAD VIEW ===================== -->
+  <section id="view-upload">
+    <div class="panel">
+      <div class="dropzone" id="dropzone">
+        <div class="icon">⬆️</div>
+        <div>Drop your CV here, or click to browse</div>
+        <div class="muted" style="font-size:12px;margin-top:6px;">PDF or DOCX, up to 10MB</div>
+        <div class="fname" id="fname"></div>
+        <input type="file" id="fileInput" accept=".pdf,.docx" />
+      </div>
+
+      <label class="field-label">Job description (optional — get a match score against a specific role)</label>
+      <textarea id="jobDescription" rows="4" placeholder="Paste a job description here to compare your CV against it..."></textarea>
+
+      <div class="row" style="margin-top:18px;">
+        <button class="btn" id="analyzeBtn">Analyze CV</button>
+        <button class="btn secondary" id="clearBtn">Clear</button>
+      </div>
+
+      <div id="status"></div>
+    </div>
+
+    <div id="results"></div>
+  </section>
+
+  <!-- ===================== HISTORY VIEW ===================== -->
+  <section id="view-history" class="hidden">
+    <div class="panel">
+      <div class="section-title">Your analysis history <span class="muted">(this browser session)</span></div>
+      <div id="historyContainer"><div class="empty-state">Loading…</div></div>
+    </div>
+  </section>
+
+  <footer>CV Analyzer — extraction, Gemini scoring & storage run entirely on your own backend.</footer>
+</div>
+
+<script>
+const API_BASE = ""; // same origin; change to e.g. "http://localhost:8000" if serving frontend separately
+
+// ---------- Session handling ----------
+function getSessionId() {
+  let id = localStorage.getItem("cv_analyzer_session_id");
+  if (!id) {
+    id = "sess_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("cv_analyzer_session_id", id);
+  }
+  return id;
+}
+const sessionId = getSessionId();
+
+// ---------- Nav ----------
+const navUpload = document.getElementById("nav-upload");
+const navHistory = document.getElementById("nav-history");
+const viewUpload = document.getElementById("view-upload");
+const viewHistory = document.getElementById("view-history");
+
+navUpload.addEventListener("click", () => switchView("upload"));
+navHistory.addEventListener("click", () => { switchView("history"); loadHistory(); });
+
+function switchView(view) {
+  const isUpload = view === "upload";
+  viewUpload.classList.toggle("hidden", !isUpload);
+  viewHistory.classList.toggle("hidden", isUpload);
+  navUpload.classList.toggle("active", isUpload);
+  navHistory.classList.toggle("active", !isUpload);
+}
+
+// ---------- Upload / dropzone ----------
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const fnameEl = document.getElementById("fname");
+let selectedFile = null;
+
+dropzone.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length) setFile(fileInput.files[0]);
+});
+
+function setFile(file) {
+  const ext = file.name.toLowerCase().split(".").pop();
+  if (!["pdf", "docx"].includes(ext)) {
+    setStatus("Only PDF or DOCX files are accepted.", true);
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    setStatus("File exceeds the 10MB size limit.", true);
+    return;
+  }
+  selectedFile = file;
+  fnameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+  setStatus("");
+}
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  selectedFile = null;
+  fileInput.value = "";
+  fnameEl.textContent = "";
+  document.getElementById("jobDescription").value = "";
+  document.getElementById("results").innerHTML = "";
+  setStatus("");
+});
+
+function setStatus(msg, isError = false, spinning = false) {
+  const el = document.getElementById("status");
+  el.classList.toggle("err", isError);
+  el.innerHTML = spinning ? `<span class="spinner"></span>${msg}` : msg;
+}
+
+// ---------- Analyze ----------
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+  if (!selectedFile) {
+    setStatus("Please select a PDF or DOCX file first.", true);
+    return;
+  }
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  analyzeBtn.disabled = true;
+  setStatus("Extracting text & running AI analysis — this can take 10-20s…", false, true);
+  document.getElementById("results").innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+  formData.append("session_id", sessionId);
+  formData.append("job_description", document.getElementById("jobDescription").value || "");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/analyze`, { method: "POST", body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Analysis failed.");
+    }
+    setStatus("Analysis complete.");
+    renderResults(data);
+  } catch (err) {
+    setStatus(err.message || "Something went wrong.", true);
+  } finally {
+    analyzeBtn.disabled = false;
+  }
+});
+
+// ---------- Rendering ----------
+function scoreColor(score) {
+  if (score >= 75) return "var(--good)";
+  if (score >= 50) return "var(--warn)";
+  return "var(--bad)";
+}
+
+function renderResults(record) {
+  const a = record.analysis;
+  const sb = a.section_breakdown;
+
+  const scoreCard = (label, score) => `
+    <div class="score-card">
+      <div class="label">${label}</div>
+      <div class="value" style="color:${scoreColor(score)}">${score}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${score}%;background:${scoreColor(score)}"></div></div>
+    </div>`;
+
+  const breakdownRow = (label, section) => `
+    <div class="breakdown-row">
+      <div class="bname">${label}</div>
+      <div class="bbar">
+        <div class="bar-track"><div class="bar-fill" style="width:${section.score}%;background:${scoreColor(section.score)}"></div></div>
+        <div class="breakdown-comment">${escapeHtml(section.comment || "")}</div>
+      </div>
+      <div class="bscore" style="color:${scoreColor(section.score)}">${section.score}</div>
+    </div>`;
+
+  let jobMatchHtml = "";
+  if (a.job_match) {
+    const jm = a.job_match;
+    jobMatchHtml = `
+      <div class="panel">
+        <div class="section-title">Job Description Match</div>
+        <div class="score-grid" style="grid-template-columns:1fr;">
+          ${scoreCard("Match Score", jm.match_score)}
+        </div>
+        <div class="cols" style="margin-top:16px;">
+          <div class="col strengths">
+            <h4>Matched Keywords</h4>
+            <ul class="bullets">${(jm.matched_keywords || []).map(k => `<li>${escapeHtml(k)}</li>`).join("") || "<li class='muted'>None found</li>"}</ul>
+          </div>
+          <div class="col weaknesses">
+            <h4>Missing Keywords</h4>
+            <ul class="bullets">${(jm.missing_keywords || []).map(k => `<li>${escapeHtml(k)}</li>`).join("") || "<li class='muted'>None</li>"}</ul>
+          </div>
+        </div>
+        <p class="muted" style="font-size:13px;margin-top:14px;">${escapeHtml(jm.notes || "")}</p>
+      </div>`;
+  }
+
+  const html = `
+    <div class="panel">
+      <div class="section-title">Overview <span class="muted">${escapeHtml(record.filename)}</span></div>
+      <div class="score-grid">
+        ${scoreCard("Overall Score", a.overall_score)}
+        ${scoreCard("ATS Compatibility", a.ats_score)}
+        ${scoreCard("Human Touch", a.human_touch_score)}
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:14px;">${escapeHtml(a.human_touch_comment || "")}</p>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn secondary small" onclick="downloadReport('${record.id}','pdf')">⬇ Download PDF report</button>
+        <button class="btn secondary small" onclick="downloadReport('${record.id}','txt')">⬇ Download text report</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Section-by-Section Breakdown</div>
+      ${breakdownRow("Contact Info", sb.contact_info)}
+      ${breakdownRow("Summary", sb.summary)}
+      ${breakdownRow("Experience", sb.experience)}
+      ${breakdownRow("Education", sb.education)}
+      ${breakdownRow("Skills", sb.skills)}
+      ${breakdownRow("Formatting", sb.formatting)}
+    </div>
+
+    <div class="panel">
+      <div class="cols">
+        <div class="col strengths">
+          <h4>✓ Strengths</h4>
+          <ul class="bullets">${(a.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+        </div>
+        <div class="col weaknesses">
+          <h4>✗ Weaknesses / Gaps</h4>
+          <ul class="bullets">${(a.weaknesses || []).map(w => `<li>${escapeHtml(w)}</li>`).join("")}</ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <details class="expand" open>
+        <summary>⚠ ATS Compatibility Issues (${(a.ats_issues || []).length})</summary>
+        <div class="body">
+          ${(a.ats_issues || []).map(i => `<div class="issue-item">${escapeHtml(i)}</div>`).join("") || "No major issues found."}
+        </div>
+      </details>
+
+      <details class="expand">
+        <summary>✎ Suggested Rewrite — ${escapeHtml(a.suggested_rewrite.section_name || "")}</summary>
+        <div class="body">
+          ${a.suggested_rewrite.original_excerpt ? `
+            <div class="rewrite-box original">
+              <div class="tag">Original</div>
+              <div class="text">${escapeHtml(a.suggested_rewrite.original_excerpt)}</div>
+            </div>` : ""}
+          <div class="rewrite-box new">
+            <div class="tag">Suggested Rewrite</div>
+            <div class="text">${escapeHtml(a.suggested_rewrite.rewritten_text)}</div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    ${jobMatchHtml}
+  `;
+
+  document.getElementById("results").innerHTML = html;
+  document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function downloadReport(analysisId, format) {
+  window.open(`${API_BASE}/api/analysis/${analysisId}/report?format=${format}`, "_blank");
+}
+
+// ---------- History ----------
+async function loadHistory() {
+  const container = document.getElementById("historyContainer");
+  container.innerHTML = `<div class="empty-state"><span class="spinner"></span> Loading…</div>`;
+  try {
+    const res = await fetch(`${API_BASE}/api/history/${sessionId}`);
+    const data = await res.json();
+    if (!data.items || data.items.length === 0) {
+      container.innerHTML = `<div class="empty-state">No analyses yet. Upload a CV to get started.</div>`;
+      return;
+    }
+    const rows = data.items.map(item => `
+      <tr>
+        <td>${escapeHtml(item.filename)}</td>
+        <td>${new Date(item.created_at).toLocaleString()}</td>
+        <td><span class="pill" style="background:${scoreColor(item.overall_score)}22;color:${scoreColor(item.overall_score)}">${item.overall_score}</span></td>
+        <td><span class="pill" style="background:${scoreColor(item.ats_score)}22;color:${scoreColor(item.ats_score)}">${item.ats_score}</span></td>
+        <td><span class="pill" style="background:${scoreColor(item.human_touch_score)}22;color:${scoreColor(item.human_touch_score)}">${item.human_touch_score}</span></td>
+        <td>
+          <button class="btn secondary small" onclick="viewHistoryItem('${item.id}')">View</button>
+          <button class="btn danger small" onclick="deleteHistoryItem('${item.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+    container.innerHTML = `
+      <table class="hist">
+        <thead>
+          <tr><th>File</th><th>Date</th><th>Overall</th><th>ATS</th><th>Human Touch</th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state">Could not load history: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function viewHistoryItem(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/analysis/${id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Could not load analysis.");
+    switchView("upload");
+    renderResults(data);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteHistoryItem(id) {
+  if (!confirm("Delete this analysis permanently?")) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/analysis/${id}?session_id=${sessionId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Could not delete.");
+    }
+    loadHistory();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+</script>
+</body>
+</html>
