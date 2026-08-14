@@ -59,7 +59,8 @@ async def health():
 
 # --- Serve the single-file frontend ---
 # frontend/index.html lives one directory up from backend/
-FRONTEND_DIR = "../frontend"
+from pathlib import Path
+FRONTEND_DIR = str(Path(__file__).resolve().parent.parent.parent / "frontend")
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
